@@ -1,0 +1,73 @@
+[Samples]
+preTriggerSamples=4000
+postTriggerSamples=3000
+data_base=7
+
+[TIMEOUT]
+valuemicros=500000
+
+[motor]
+current_positionX=1
+current_positionY=5
+current_positionZ=10
+
+[Number of points]
+nx=1
+ny=101
+nz=1
+
+[DirectionX]
+;mm
+dir_axes1= 0
+dir_axes2= 0
+dir_axes3= 0.0
+
+[DirectionY]
+;mm
+dir_axes1= 0.0
+dir_axes2= 0.5
+dir_axes3= 0.0
+
+[DirectionZ]
+;mm
+dir_axes1= 0.0
+dir_axes2= 0
+dir_axes3= 0.5
+
+[Cord_p0]
+;mm
+cordp0_axes1=35
+cordp0_axes2=70
+cordp0_axes3= 120
+
+[Channel]
+;V
+ChannelA_range=0.5
+ChannelB_range=2
+
+[delaymvt_acq]
+delayms=2000
+
+[Trigger]
+ChannelA_threshold=800
+;0: PS5000A_ABOVE,1: PS5000A_BELOW,2: PS5000A_RISING,3:PS5000A_FALLING 
+ChannelA_direction=2
+bool_trig_detection=2
+ChannelB_threshold=500
+;0: PS5000A_ABOVE,1: PS5000A_BELOW,2: PS5000A_RISING,3:PS5000A_FALLING 
+ChannelB_direction=2
+
+
+
+[sequence_shot]
+number_shot=10
+delayshot=2000
+
+[hydro]
+Temp=24.5
+Krf=1.7466551
+
+[generator]
+generateur='duolith'
+Power=0.55
+transducteur=5
