@@ -6,7 +6,7 @@ Created on Mon May 26 12:13:06 2025
 """
 import sys 
 import tkinter as tk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox, simpledialog
 from process_scan import scanning
 import Sequence
 import scope_pico 
@@ -22,6 +22,7 @@ import datetime as date
 import os 
 import shutil 
 import numpy as np
+from pathlib import Path
 pr=scanning()
 sc=scope_pico()
 # Création de la fenêtre principale
@@ -57,19 +58,19 @@ def Goto_originZ_app():
     text_area.insert(tk.END, "origine Z.\n")
 	
 def Goto_starting_pointX_app():
-    pr.go_start(0)
+    pr.go_start(0,'config/config_scan.ini')
     text_area.insert(tk.END, " start X.\n")
 
 def Goto_starting_pointY_app():
-    pr.go_start(1)
+    pr.go_start(1,'config/config_scan.ini')
     text_area.insert(tk.END, " start Y.\n")
 
 def Goto_starting_pointZ_app():
-    pr.go_start(2)
+    pr.go_start(2,'config/config_scan.ini')
     text_area.insert(tk.END, "start Z.\n")
 
 def Run_scan_app():
-    pr.run_scan()
+    pr.run_scan('config/config_scan.ini','')
     text_area.insert(tk.END, "Run Scan.\n")
 
 def Run_sequence_shot_app():
@@ -80,15 +81,23 @@ def disconnect_app():
     pr.disconnect()
     text_area.insert(tk.END, "disconnect.\n")
 
-def rechercher_fichier():
-    fichier = filedialog.askopenfilename(
-        title="Sélectionner un fichier",
-        filetypes=(("Fichiers texte", "*.ini"), ("Tous les fichiers", "*.*"))
-    )
-    if fichier:
-        text_area.insert(file_name_area.END, f"Fichier sélectionné : {fichier}\n")
+
+def run_sequence_scan():
+    folder_sequence_save =simpledialog.askstring(title=" folder name",prompt="put the name of folder :")
+    os.mkdir('measure/'+folder_sequence_save)
+    if folder_sequence_save:
+      
+         print("folder creates :"+folder_sequence_save)
     else:
-        text_area.insert(file_name_area.END, "Aucun fichier sélectionné.\n")
+        print("no names")
+    folder_sequence_save=folder_sequence_save+'/'
+    #list_scan=list(Path(folder).glob("*.ini"))
+    folder='sequence_scan'
+    list_files=list(Path(folder).glob("*.ini"))
+    for f in list_files:
+        
+        print(f)
+        pr.run_scan(f,folder_sequence_save)
 
 # Création des boutons
 Connect_motor = tk.Button(root, text="Connect motor", command=connect_motor_app)
@@ -104,25 +113,28 @@ start_Z = tk.Button(root, text="Start_Z", command=Goto_starting_pointZ_app)
 
 Start_Scan = tk.Button(root, text="Start Scan", command=Run_scan_app)
 disconnect= tk.Button(root, text="disconnect", command=disconnect_app)
-sequence_shot = tk.Button(root, text="sequence_shot", command=Run_sequence_shot_app)
+sequence_scan= tk.Button(root, text="sequence_scan", command=run_sequence_scan)
 
 # Placement des boutons
-Connect_motor.pack(pady=2)
-Connect_scope.pack(pady=2)
 
-Origin_X.pack(pady=2)
-Origin_Y.pack(pady=2)
-Origin_Z.pack(pady=2)
 
-start_X.pack(pady=2)
-start_Y.pack(pady=2)
-start_Z.pack(pady=2)
 
-Start_Scan.pack(pady=2)
-disconnect.pack(pady=2)
+Connect_motor.pack(padx=1,pady=1)
+Connect_scope.pack(padx=1,pady=1)
 
-sequence_shot.pack(pady=2)
-file_name_area.pack(pady=2)
+Origin_X.pack(padx=2,pady=1)
+Origin_Y.pack(padx=2,pady=1)
+Origin_Z.pack(padx=2,pady=1)
+
+start_X.pack(padx=3,pady=1)
+start_Y.pack(padx=3,pady=1)
+start_Z.pack(padx=3,pady=1)
+
+Start_Scan.pack(padx=1,pady=1)
+disconnect.pack(padx=1,pady=1)
+
+sequence_scan.pack(padx=1,pady=1)
+file_name_area.pack(padx=1,pady=1)
 # Lancement de l'application
 root.mainloop()
 

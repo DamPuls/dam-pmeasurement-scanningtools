@@ -18,8 +18,8 @@ class acquisition_pico:
         self.scope_pico = scope
         self.config = configparser.ConfigParser()
         self.config.read('config/config_scan.ini')
-    def reload(self):
-        self.config.read('config/config_scan.ini')
+    def reload(self,file_ini):
+        self.config.read(file_ini)
 
     def config_acquisition(self):
         # Setting the number of sample to be collected
@@ -82,9 +82,12 @@ class acquisition_pico:
         bufferAMax = (ctypes.c_int16 * self.maxsamples)()
         # used for downsampling which isn't in the scope of this example
         bufferAMin = (ctypes.c_int16 * self.maxsamples)()
-        # Setting the data buffer location for data collection from channel A
+        bufferBMax = (ctypes.c_int16 * self.maxsamples)()
+        bufferBMin = (ctypes.c_int16 * self.maxsamples)()
+        # Setting the data buffer location for data collection from channel A and B
         # Handle = Chandle
         self.source = ps.PS5000A_CHANNEL["PS5000A_CHANNEL_A"]
+        self.sourceB = ps.PS5000A_CHANNEL["PS5000A_CHANNEL_B"]
         # Buffer max = ctypes.byref(bufferAMax)
         # Buffer min = ctypes.byref(bufferAMin)
         # Buffer length = maxsamples
@@ -92,6 +95,8 @@ class acquisition_pico:
         # Ratio mode = ps5000a_Ratio_Mode_None = 0
         self.scope_pico.status["SetDataBuffers"] = ps.ps5000aSetDataBuffers(self.scope_pico.chandle, self.source, ctypes.byref(bufferAMax), ctypes.byref(bufferAMin), self.maxsamples, 0, 0)
         assert_pico_ok(self.scope_pico.status["SetDataBuffers"])
+        self.scope_pico.status["SetDataBuffersB"] = ps.ps5000aSetDataBuffers(self.scope_pico.chandle, self.sourceB, ctypes.byref(bufferBMax), ctypes.byref(bufferBMin), self.maxsamples, 0, 0)
+        assert_pico_ok(self.scope_pico.status["SetDataBuffersB"])
         # Creates a overlow location for data
         overflow = (ctypes.c_int16 * 10)()
         # Creates converted types maxsamples
@@ -106,6 +111,7 @@ class acquisition_pico:
         assert_pico_ok(self.scope_pico.status["GetValuesBulk"])
 
         self.data = adc2mV(bufferAMax, self.scope_pico.chARange, self.scope_pico.maxADC)
+        self.dataB = adc2mV(bufferBMax, self.scope_pico.chBRange, self.scope_pico.maxADC)
         # Creates the time data
         self.time_line = np.linspace(0, (cmaxSamples.value) * self.timeIntervalns.value, cmaxSamples.value)
 

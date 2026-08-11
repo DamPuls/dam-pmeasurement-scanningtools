@@ -21,7 +21,7 @@ class generator_trig:
 	def __init__(self, scope):
 		self.scope_pico = scope
 		self.config = configparser.ConfigParser()
-		self.config.read('config/config_scan.ini.ini')
+		self.config.read('config/config_scan.ini')
 
 	def config_trig(self):
 		# Output a square wave with peak-to-peak voltage of 2 V and frequency of 10 kHz
@@ -55,8 +55,6 @@ class generator_trig:
 		
 		
 	def gene_trig(self):
-		print('trig generator')
-	
 		ps.ps5000aSigGenSoftwareControl(self.scope_pico.chandle, 1);
 		time.sleep(0.1)
 		

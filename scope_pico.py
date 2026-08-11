@@ -20,8 +20,8 @@ class scope_pico:
         self.config = configparser.ConfigParser()
         self.config.read('config/config_scan.ini')
   
-    def reload(self):
-        self.config.read('config/config_scan.ini')
+    def reload(self,file_ini):
+        self.config.read(file_ini)
 		
     def connect(self):
         self.resolution = ps.PS5000A_DEVICE_RESOLUTION["PS5000A_DR_12BIT"]
@@ -105,9 +105,12 @@ class scope_pico:
             # direction = PS5000A_RISING = 2
             # delay = 0 s
             # auto Trigger = 1000 ms
-
+            v_auto_trig=float(self.config['TIMEOUT']['valuemicros'])*0.001
+            print('auto_trig')
+            print(v_auto_trig)
+            print(float(self.config['Trigger']['ChannelA_threshold']))
             self. status["trigger"] = ps.ps5000aSetSimpleTrigger(
-                self.chandle, 1, source, threshold, int(self.config['Trigger']['ChannelA_direction']), 0, 3000)
+                self.chandle, 1, source, threshold, int(self.config['Trigger']['ChannelA_direction']), 0,int(v_auto_trig))
             assert_pico_ok(self.status["trigger"])
         elif(type_trig == 2):
 
@@ -133,6 +136,8 @@ class scope_pico:
             self.status["setTriggerChannelPropertiesV2"] = ps.ps5000aSetTriggerChannelPropertiesV2(
                 self.chandle, ctypes.byref(triggerProperties), 2, 0)
             assert_pico_ok(self.status["setTriggerChannelPropertiesV2"])
+
+            ps.ps5000aSetAutoTriggerMicroSeconds(self.chandle,int(self.config['TIMEOUT']['valuemicros']))
             ##
             # LOGICAL OPERATION
 
@@ -166,6 +171,19 @@ class scope_pico:
             self.status["setTriggerChannelDirections"] = ps.ps5000aSetTriggerChannelDirectionsV2(
                 self.chandle, ctypes.byref(triggerDirections), 2)
             assert_pico_ok(self.status["setTriggerChannelDirections"])
+        elif(type_trig == 3):
+            # Set up simple trigger on Channel B only, Channel A is left unarmed
+            source = ps.PS5000A_CHANNEL["PS5000A_CHANNEL_B"]
+            threshold = int(mV2adc(
+                float(self.config['Trigger']['ChannelB_threshold']), self.chBRange, self.maxADC))
+            print('seuil')
+            print(float(self.config['Trigger']['ChannelB_threshold']))
+            v_auto_trig=float(self.config['TIMEOUT']['valuemicros'])*0.001
+            print('auto_trig')
+            print(v_auto_trig)
+            self. status["trigger"] = ps.ps5000aSetSimpleTrigger(
+                self.chandle, 1, source, threshold, int(self.config['Trigger']['ChannelB_direction']), 0,int(v_auto_trig))
+            assert_pico_ok(self.status["trigger"])
 
     def close(self):
         # Stop the scope
