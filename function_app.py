@@ -192,11 +192,11 @@ class f_app :
         folder_sequence_save=folder_sequence_save+'/'
         #list_scan=list(Path(folder).glob("*.ini"))
         folder='sequence_scan'
-        list_files=list(Path(folder).glob("*.ini"))
+        list_files=sorted(Path(folder).glob("*.ini"), key=lambda f: int(f.stem) if f.stem.isdigit() else f.stem)
         for f in list_files:
             
             print(f)
-            self.pr.run_scan(f,folder_sequence_save)
+            self.pr.run_scan(f,folder_sequence_save,f.stem)
     
     def disconnect_motor_app(self):
         self.pr.disconnect_motor()

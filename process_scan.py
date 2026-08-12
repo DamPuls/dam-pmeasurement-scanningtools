@@ -137,6 +137,8 @@ class scanning :
 		self.config['Cord_p0']['cordp0_axes1']=str(p0[0])
 		self.config['Cord_p0']['cordp0_axes2']=str(p0[1] )
 		self.config['Cord_p0']['cordp0_axes3']=str(p0[2] )
+		for key in ('cordm_axes1','cordm_axes2','cordm_axes3'):
+			self.config.remove_option('Cord_p0',key)
 		with open(file_ini, "w") as fichier:
 			self.config.write(fichier)
 
@@ -184,6 +186,8 @@ class scanning :
 		self.config['Cord_p0']['cordp0_axes1']=str(p0[0])
 		self.config['Cord_p0']['cordp0_axes2']=str(p0[1])
 		self.config['Cord_p0']['cordp0_axes3']=str(p0[2])
+		for key in ('cordm_axes1','cordm_axes2','cordm_axes3'):
+			self.config.remove_option('Cord_p0',key)
 		with open(file_ini, "w") as fichier:
 			self.config.write(fichier)
 
@@ -246,10 +250,11 @@ class scanning :
 		shutil.copy2(fichier_ini,dst)
 		
 		
-	def create_result_folder(self,save_folder):
-		self.folder_name='measure/'+save_folder+'measure'+self.curent_date
+	def create_result_folder(self,save_folder,ini_suffix=''):
+		suffix = ('_'+ini_suffix) if ini_suffix else ''
+		self.folder_name='measure/'+save_folder+'measure'+self.curent_date+suffix
 		os.mkdir(self.folder_name)
-		self.folder_name_data='measure/'+save_folder+'measure'+self.curent_date+'/'+'data'
+		self.folder_name_data=self.folder_name+'/'+'data'
 		os.mkdir(self.folder_name_data)
 		
 	def init_scan(self,ini_file):
@@ -299,10 +304,10 @@ class scanning :
 		plt.pause(0.001)
 
 
-	def run_scan(self,ini_file,save_folder):
+	def run_scan(self,ini_file,save_folder,ini_suffix=''):
 		t1=time.time()
 		self.define_current_date()
-		self.create_result_folder(save_folder)
+		self.create_result_folder(save_folder,ini_suffix)
 		self.reload(ini_file)
 		self.scope_init()
 		self.init_scan(ini_file)
