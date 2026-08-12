@@ -276,7 +276,10 @@ class scanning :
 			h, rem = divmod(int(t), 3600)
 			m, s = divmod(rem, 60)
 			return f"{h}:{m:02d}:{s:02d}" if h else f"{m}:{s:02d}"
-		print("[{}/{}] elapsed {} / remaining ~{} | X={:.4f} Y={:.4f} Z={:.4f}".format(
+		seq_prefix = ""
+		if getattr(self, 'seq_index', None) is not None and getattr(self, 'seq_total', None) is not None:
+			seq_prefix = "[{}/{}] ".format(self.seq_index, self.seq_total)
+		print(seq_prefix + "[{}/{}] elapsed {} / remaining ~{} | X={:.4f} Y={:.4f} Z={:.4f}".format(
 			ind + 1, total, fmt(elapsed), fmt(remaining), position[0], position[1], position[2]))
 
 	def save_data(self, ind_acqu,position ):
@@ -286,26 +289,43 @@ class scanning :
 
 	def init_plot(self):
 		plt.ion()
-		self.fig, self.ax = plt.subplots()
+		self.fig = plt.figure(1)
+		self.fig.clf()
+		self.ax = self.fig.add_subplot(111)
 		self.lineB, = self.ax.plot([], [], color='red', label='Channel B', zorder=1)
 		self.lineA, = self.ax.plot([], [], color='blue', label='Channel A', zorder=2)
 		self.ax.set_xlabel('Time (ns)')
 		self.ax.set_ylabel('Amplitude (mV)')
 		self.ax.legend()
 		self.fig.show()
+		self.fig.canvas.draw()
+		self.plot_background = self.fig.canvas.copy_from_bbox(self.ax.bbox)
 
 	def update_plot(self):
 		self.lineA.set_data(self.acq.time_line, self.acq.data)
 		self.lineB.set_data(self.acq.time_line, self.acq.dataB)
+		old_xlim = self.ax.get_xlim()
+		old_ylim = self.ax.get_ylim()
 		self.ax.relim()
 		self.ax.autoscale_view()
-		self.fig.canvas.draw()
+		if self.ax.get_xlim() != old_xlim or self.ax.get_ylim() != old_ylim:
+			# axis limits changed - needs a full redraw to refresh ticks/background
+			self.fig.canvas.draw()
+			self.plot_background = self.fig.canvas.copy_from_bbox(self.ax.bbox)
+		else:
+			# steady state - just blit the two lines instead of redrawing everything
+			self.fig.canvas.restore_region(self.plot_background)
+			self.ax.draw_artist(self.lineA)
+			self.ax.draw_artist(self.lineB)
+			self.fig.canvas.blit(self.ax.bbox)
 		self.fig.canvas.flush_events()
 		plt.pause(0.001)
 
 
-	def run_scan(self,ini_file,save_folder,ini_suffix=''):
+	def run_scan(self,ini_file,save_folder,ini_suffix='',close_plot_after=False,seq_index=None,seq_total=None):
 		t1=time.time()
+		self.seq_index = seq_index
+		self.seq_total = seq_total
 		self.define_current_date()
 		self.create_result_folder(save_folder,ini_suffix)
 		self.reload(ini_file)
@@ -327,6 +347,8 @@ class scanning :
 		t2=time.time()
 		print('duration acquisition ')
 		print (t2-t1)
+		if close_plot_after:
+			plt.close(self.fig)
 	def run_shot_sequence(self):
 		self.scope_init()
 		self.define_current_date()

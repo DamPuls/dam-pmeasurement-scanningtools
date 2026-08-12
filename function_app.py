@@ -193,10 +193,11 @@ class f_app :
         #list_scan=list(Path(folder).glob("*.ini"))
         folder='sequence_scan'
         list_files=sorted(Path(folder).glob("*.ini"), key=lambda f: (0, int(f.stem)) if f.stem.isdigit() else (1, f.stem))
-        for f in list_files:
-            
+        total_files=len(list_files)
+        for i,f in enumerate(list_files, start=1):
+
             print(f)
-            self.pr.run_scan(f,folder_sequence_save,f.stem)
+            self.pr.run_scan(f,folder_sequence_save,f.stem,close_plot_after=True,seq_index=i,seq_total=total_files)
     
     def disconnect_motor_app(self):
         self.pr.disconnect_motor()
