@@ -2,6 +2,9 @@
 measure/
 trash/
 
+# Scan config / sequence files (generated / machine-specific)
+*.ini
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
