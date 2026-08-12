@@ -26,6 +26,7 @@ import shutil
 import numpy as np
 from pathlib import Path
 from tkinter import simpledialog
+import configparser
 
 class f_app :
     
@@ -194,10 +195,28 @@ class f_app :
         folder='sequence_scan'
         list_files=sorted(Path(folder).glob("*.ini"), key=lambda f: (0, int(f.stem)) if f.stem.isdigit() else (1, f.stem))
         total_files=len(list_files)
+
+        # Pre-scan every ini's point count so remaining-time-in-sequence can be estimated
+        file_points=[]
+        for f in list_files:
+            cfg=configparser.ConfigParser()
+            cfg.read(f)
+            nx=int(cfg['Number of points']['nx'])
+            ny=int(cfg['Number of points']['ny'])
+            nz=int(cfg['Number of points']['nz'])
+            file_points.append(nx*ny*nz)
+        seq_total_points=sum(file_points)
+
+        seq_start_time=time.time()
+        points_before=0
         for i,f in enumerate(list_files, start=1):
 
             print(f)
-            self.pr.run_scan(f,folder_sequence_save,f.stem,close_plot_after=True,seq_index=i,seq_total=total_files)
+            self.pr.run_scan(f,folder_sequence_save,f.stem,close_plot_after=True,
+                              seq_index=i,seq_total=total_files,
+                              seq_total_points=seq_total_points,seq_points_before=points_before,
+                              seq_start_time=seq_start_time)
+            points_before+=file_points[i-1]
     
     def disconnect_motor_app(self):
         self.pr.disconnect_motor()

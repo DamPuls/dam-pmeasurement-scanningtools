@@ -276,11 +276,17 @@ class scanning :
 			h, rem = divmod(int(t), 3600)
 			m, s = divmod(rem, 60)
 			return f"{h}:{m:02d}:{s:02d}" if h else f"{m}:{s:02d}"
-		seq_prefix = ""
+
 		if getattr(self, 'seq_index', None) is not None and getattr(self, 'seq_total', None) is not None:
-			seq_prefix = "[{}/{}] ".format(self.seq_index, self.seq_total)
-		print(seq_prefix + "[{}/{}] elapsed {} / remaining ~{} | X={:.4f} Y={:.4f} Z={:.4f}".format(
-			ind + 1, total, fmt(elapsed), fmt(remaining), position[0], position[1], position[2]))
+			points_done_seq = (self.seq_points_before or 0) + (ind + 1)
+			elapsed_seq = time.time() - self.seq_start_time
+			remaining_seq = (elapsed_seq / points_done_seq) * (self.seq_total_points - points_done_seq)
+			print("[{}/{}] [{}/{}] remaining(file)~{} remaining(seq)~{} | X={:.4f} Y={:.4f} Z={:.4f}".format(
+				self.seq_index, self.seq_total, ind + 1, total, fmt(remaining), fmt(remaining_seq),
+				position[0], position[1], position[2]))
+		else:
+			print("[{}/{}] elapsed {} / remaining ~{} | X={:.4f} Y={:.4f} Z={:.4f}".format(
+				ind + 1, total, fmt(elapsed), fmt(remaining), position[0], position[1], position[2]))
 
 	def save_data(self, ind_acqu,position ):
 		str_position='_X_'+str(position[0])+'_Y_'+str(position[1])+'_Z_'+str(position[2])+'_'
@@ -322,10 +328,13 @@ class scanning :
 		plt.pause(0.001)
 
 
-	def run_scan(self,ini_file,save_folder,ini_suffix='',close_plot_after=False,seq_index=None,seq_total=None):
+	def run_scan(self,ini_file,save_folder,ini_suffix='',close_plot_after=False,seq_index=None,seq_total=None,seq_total_points=None,seq_points_before=None,seq_start_time=None):
 		t1=time.time()
 		self.seq_index = seq_index
 		self.seq_total = seq_total
+		self.seq_total_points = seq_total_points
+		self.seq_points_before = seq_points_before
+		self.seq_start_time = seq_start_time
 		self.define_current_date()
 		self.create_result_folder(save_folder,ini_suffix)
 		self.reload(ini_file)
@@ -334,6 +343,7 @@ class scanning :
 		self.save_config(ini_file)
 		delay_mvt_acq=int(self.config['delaymvt_acq']['delayms'])*0.001
 		self.init_plot()
+		throttle_plot = self.gridSize > 100
 		for ind in range(self.gridSize):
 			self.myScan.moveForward()
 			self.acq.running_block()
@@ -341,7 +351,8 @@ class scanning :
 			time.sleep(delay_mvt_acq)
 			self.trig_shot.gene_trig()
 			self.acq.get_data()
-			self.update_plot()
+			if (not throttle_plot) or (ind % 5 == 0) or (ind == self.gridSize - 1):
+				self.update_plot()
 			self.save_data(ind,position)
 			self.print_progress(ind,self.gridSize,t1,position)
 		t2=time.time()
