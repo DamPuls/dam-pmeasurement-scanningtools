@@ -192,7 +192,7 @@ class f_app :
         folder_sequence_save=folder_sequence_save+'/'
         #list_scan=list(Path(folder).glob("*.ini"))
         folder='sequence_scan'
-        list_files=sorted(Path(folder).glob("*.ini"), key=lambda f: int(f.stem) if f.stem.isdigit() else f.stem)
+        list_files=sorted(Path(folder).glob("*.ini"), key=lambda f: (0, int(f.stem)) if f.stem.isdigit() else (1, f.stem))
         for f in list_files:
             
             print(f)
