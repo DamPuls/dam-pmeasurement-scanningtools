@@ -4,6 +4,7 @@ trash/
 
 # Scan config / sequence files (generated / machine-specific)
 *.ini
+!sequence_scan/*.ini
 
 
 # Byte-compiled / optimized / DLL files
