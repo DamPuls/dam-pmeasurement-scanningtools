@@ -227,3 +227,18 @@ class f_app :
         self.pr.disconnect_scope()
         self.add_message( " disconnect scope .\n")
         #text_area.insert(tk.END, "disconnect.\n")
+
+    def find_focus_app(self):
+        # New, additive feature: coordinate-wise coarse-to-fine focus search,
+        # starting from wherever the motor currently is. See focus_search.py.
+        from focus_search import run_focus_search
+        self.add_message("Starting focus search from current position...\n")
+        try:
+            result = run_focus_search(self.pr, on_progress=self.add_message)
+            pos = result['position']
+            msg = ("Focus search done: X={:.3f} Y={:.3f} Z={:.3f} "
+                   "({} points, log: {})\n").format(
+                pos[0], pos[1], pos[2], result['total_points'], result['log_path'])
+            self.add_message(msg)
+        except Exception as e:
+            self.add_message("Focus search failed: {}\n".format(e))

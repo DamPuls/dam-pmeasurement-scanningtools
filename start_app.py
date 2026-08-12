@@ -6,7 +6,7 @@ Created on Mon Feb 16 14:01:43 2026
 """
 
 import sys
-from PySide6.QtWidgets import QApplication, QMainWindow
+from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton
 from PySide6.QtCore import QFile
 from interface_scan import Ui_mainWindow
 from function_app import f_app
@@ -49,6 +49,14 @@ window.ui.pushButton_move_mZ.clicked.connect(f_app.move_pointZm_app)
 window.ui.button_disconnectmotor.clicked.connect(f_app.disconnect_motor_app)
 window.ui.button_disconnectpico.clicked.connect(f_app.disconnect_scope_app)
 window.ui.pushButton_save_config.clicked.connect(f_app.change_ini)
+
+# New, additive: "Find Focus" button, added directly in code rather than
+# via scan_app_qt.ui/interface_scan.py, placed in an empty grid cell
+# (row 10, col 4 - directly below the existing "start sequence" button).
+button_find_focus = QPushButton("Find Focus", window.ui.centralwidget)
+window.ui.gridLayout.addWidget(button_find_focus, 10, 4, 1, 1)
+button_find_focus.clicked.connect(f_app.find_focus_app)
+
 f_app.load_axes()
 sys.exit(app.exec())
 

@@ -1,6 +1,7 @@
 # Measurement data
 measure/
 trash/
+focus_search_logs/
 
 # Scan config / sequence files (generated / machine-specific)
 *.ini
