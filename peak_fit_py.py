@@ -25,9 +25,10 @@ def fit_peak(positions, values, n_dense=200):
     fit if the Gaussian fit fails or looks unreasonable (mirrors
     compute_pressure_fit.m's gauss2 -> poly6 fallback logic).
 
-    Returns (fitted_peak_position, fitted_peak_value, width_m6dB).
-    width_m6dB is None if a -6dB width can't be resolved (e.g. the fit
-    never drops 6dB within the sampled range).
+    Returns (fitted_peak_position, fitted_peak_value, width_m6dB, x_dense,
+    y_dense). width_m6dB is None if a -6dB width can't be resolved (e.g. the
+    fit never drops 6dB within the sampled range). x_dense/y_dense are the
+    dense curve the peak/width were read off, handed back for plotting.
     """
     positions = np.asarray(positions, dtype=float)
     values = np.asarray(values, dtype=float)
@@ -62,7 +63,7 @@ def fit_peak(positions, values, n_dense=200):
     fit_peak_val = float(y_dense[peak_idx])
     width_m6db = _compute_length_m6db(x_dense, y_dense)
 
-    return fit_peak_pos, fit_peak_val, width_m6db
+    return fit_peak_pos, fit_peak_val, width_m6db, x_dense, y_dense
 
 
 def _compute_length_m6db(x_dense, y_dense, threshold_db=-6.0):

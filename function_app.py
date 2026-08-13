@@ -232,13 +232,19 @@ class f_app :
         # New, additive feature: coordinate-wise coarse-to-fine focus search,
         # starting from wherever the motor currently is. See focus_search.py.
         from focus_search import run_focus_search
+        import traceback
         self.add_message("Starting focus search from current position...\n")
         try:
             result = run_focus_search(self.pr, on_progress=self.add_message)
             pos = result['position']
-            msg = ("Focus search done: X={:.3f} Y={:.3f} Z={:.3f} "
-                   "({} points, log: {})\n").format(
-                pos[0], pos[1], pos[2], result['total_points'], result['log_path'])
+            off = result['logical_offset']
+            msg = ("Focus search done: motor1={:.3f} motor2={:.3f} motor3={:.3f} "
+                   "(X={:.2f} Y={:.2f} Z={:.2f} mm from start, {} points, log: {})\n").format(
+                pos[0], pos[1], pos[2], off[0], off[1], off[2],
+                result['total_points'], result['log_path'])
             self.add_message(msg)
         except Exception as e:
             self.add_message("Focus search failed: {}\n".format(e))
+            # Printed (not just shown in the non-copyable message widget) so
+            # the full traceback can be read/copied from the console.
+            traceback.print_exc()
