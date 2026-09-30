@@ -51,12 +51,29 @@ window.ui.button_disconnectmotor.clicked.connect(f_app.disconnect_motor_app)
 window.ui.button_disconnectpico.clicked.connect(f_app.disconnect_scope_app)
 window.ui.pushButton_save_config.clicked.connect(f_app.change_ini)
 
-# New, additive: "Find Focus" button, added directly in code rather than
-# via scan_app_qt.ui/interface_scan.py, placed in an empty grid cell
-# (row 10, col 4 - directly below the existing "start sequence" button).
+# "Find Focus" button hidden (not removed) - the focus-search algorithm
+# doesn't work well and is never used; its underlying code/wiring is left
+# untouched in case it's revisited later.
 button_find_focus = QPushButton("Find Focus", window.ui.centralwidget)
 window.ui.gridLayout.addWidget(button_find_focus, 10, 4, 1, 1)
 button_find_focus.clicked.connect(f_app.find_focus_app)
+button_find_focus.setVisible(False)
+
+# New, additive: "Start Acquisition" / "Stop Acquisition" toggle - a
+# free-running acquisition loop with no motor movement, for live
+# viewing/alignment. Placed in Find Focus's now-hidden grid cell
+# (row 10, col 4).
+button_acquisition = QPushButton("Start Acquisition", window.ui.centralwidget)
+window.ui.gridLayout.addWidget(button_acquisition, 10, 4, 1, 1)
+button_acquisition.clicked.connect(lambda: f_app.toggle_acquisition_app(button_acquisition))
+
+# New, additive: expose run_shot_sequence() (repeated shots at the current
+# position, no motor movement, saved to disk) in this app - it already
+# existed in process_scan.py but was only ever wired in the old Tkinter
+# Scan_app.py. Placed in an empty grid cell (row 11, col 2).
+button_shot_sequence = QPushButton("Run Shot Sequence", window.ui.centralwidget)
+window.ui.gridLayout.addWidget(button_shot_sequence, 11, 2, 1, 1)
+button_shot_sequence.clicked.connect(f_app.run_shot_sequence_app)
 
 # New, additive: let the message list's text be selected and copied
 # (Ctrl+C) - QListWidget items are selectable by default but don't wire

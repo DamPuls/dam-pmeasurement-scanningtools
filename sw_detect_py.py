@@ -1,12 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Python port of f_detect_SW_DAM.m (MATLAB, stim-pmeasurement-postprocessing/DAM)
-for use in the live focus-search loop, where round-tripping to MATLAB per
-acquired point isn't practical. Operates on one raw signal at a time (the
-MATLAB version loops over a whole matrix of signals; here the caller already
-has one signal per acquired point).
+Python port of f_detect_SW_DAM.m (MATLAB, stim-pmeasurement-postprocessing/DAM).
+Operates on one raw signal at a time (the MATLAB version loops over a whole
+matrix of signals; here the caller already has one signal per acquired point).
 
-New, standalone module - not used by any existing scan/analysis code path.
+Used by focus_search.py, process_scan.py's live plot, and scan_postprocess.py.
 """
 import numpy as np
 from scipy.signal import find_peaks, peak_widths
@@ -14,7 +12,7 @@ from scipy.signal import find_peaks, peak_widths
 
 def detect_sw(signal, dt, f_signal, threshold, dc_window=(30, 80),
               min_peak_duration=0.2e-6, search_extra_samples=300,
-              cavitation_range=150e6):
+              cavitation_range=150e6, min_peak_amplitude=None):
     """
     Isolate the genuine shockwave pulse within a raw acquisition window.
 
@@ -23,6 +21,17 @@ def detect_sw(signal, dt, f_signal, threshold, dc_window=(30, 80),
     f_signal: expected SW signal main frequency (Hz) - bounds plausible peak width
     threshold: MinPeakProminence threshold for findpeaks (same units as signal)
     dc_window: (start, end) sample indices used to estimate/remove DC offset
+    min_peak_amplitude: minimum candidate-peak amplitude (same units as signal),
+        defaults to `threshold`. MinPeakProminence alone only requires a
+        candidate to rise above its own *local* dip - a small ripple sitting
+        next to a deep local dip can have high prominence despite a low
+        absolute amplitude, and (being the first candidate chronologically)
+        can wrongly win over the real, larger shockwave peak later in the
+        trace. Requiring the candidate's own amplitude to also clear this
+        floor filters those out. Confirmed on real data: without this, 7/61
+        points in one real scan locked onto a spurious sub-2MPa ripple while
+        the genuine ~30-40MPa shockwave later in the same trace was zeroed
+        out by the truncation.
 
     Returns (sw_signal, detected):
       sw_signal: signal truncated to the detected SW window (zeroed after it),
@@ -31,6 +40,8 @@ def detect_sw(signal, dt, f_signal, threshold, dc_window=(30, 80),
     """
     signal = np.asarray(signal, dtype=float)
     n = len(signal)
+    if min_peak_amplitude is None:
+        min_peak_amplitude = threshold
 
     dc_mean = np.mean(signal[dc_window[0]:dc_window[1]])
     sig = signal - dc_mean
@@ -46,7 +57,8 @@ def detect_sw(signal, dt, f_signal, threshold, dc_window=(30, 80),
     peaks, _ = find_peaks(sig, prominence=threshold)
     if len(peaks) > 0:
         widths = peak_widths(sig, peaks, rel_height=0.5)[0]
-        valid = np.where((widths <= max_peak_len) & (widths >= min_peak_len))[0]
+        valid = np.where((widths <= max_peak_len) & (widths >= min_peak_len)
+                          & (sig[peaks] >= min_peak_amplitude))[0]
         if len(valid) > 0:
             loc = peaks[valid[0]]
 

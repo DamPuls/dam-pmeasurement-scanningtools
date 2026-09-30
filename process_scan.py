@@ -17,6 +17,7 @@ from acquisition import acquisition_pico
 from  generator_trig import generator_trig
 import pressure_convert
 from sw_detect_py import detect_sw
+import scan_postprocess
 import matplotlib.pyplot as plt
 
 # Same defaults as the MATLAB pipeline (f_process_scan_2D.m) and focus_search.py
@@ -38,7 +39,8 @@ class scanning :
 		self.trig_shot=generator_trig(self.sc)
 		self.config = configparser.ConfigParser()
 		self.config.read('config/config_scan.ini')
-		
+		self.acquisition_running = False
+
 	    
 	def reload(self,file_ini):
 		self.config.read(file_ini)
@@ -301,14 +303,17 @@ class scanning :
 
 	def init_plot(self):
 		plt.ion()
-		self.fig = plt.figure(1)
+		self.fig = plt.figure(1, figsize=(11, 6))
 		self.fig.clf()
-		self.ax = self.fig.add_subplot(111)
+		gs = self.fig.add_gridspec(2, 1, height_ratios=[1, 6], hspace=0.08)
+		self.ax_info = self.fig.add_subplot(gs[0])
+		self.ax_info.axis('off')
+		self.text_info = self.ax_info.text(0.0, 0.5, '', transform=self.ax_info.transAxes,
+			va='center', ha='left', fontsize=11)
+
+		self.ax = self.fig.add_subplot(gs[1])
 		self.lineA, = self.ax.plot([], [], color='blue', label='Raw', zorder=2, alpha=0.5)
 		self.line_sw, = self.ax.plot([], [], color='orange', label='Windowed', zorder=3)
-		self.text_peak = self.ax.text(0.02, 0.95, '', transform=self.ax.transAxes,
-			va='top', ha='left', fontsize=12,
-			bbox=dict(boxstyle='round', fc='white', ec='gray', alpha=0.8))
 		self.ax.set_xlabel('Time (µs)', fontsize=12)
 		self.ax.set_ylabel('Pressure (MPa)', fontsize=12)
 		self.ax.tick_params(axis='both', labelsize=11)
@@ -316,9 +321,9 @@ class scanning :
 		self.ax.legend(fontsize=8, loc='upper right')
 		self.fig.show()
 		self.fig.canvas.draw()
-		self.plot_background = self.fig.canvas.copy_from_bbox(self.ax.bbox)
+		self.plot_background = self.fig.canvas.copy_from_bbox(self.fig.bbox)
 
-	def update_plot(self):
+	def update_plot(self, ind=None, total=None, position=None):
 		dt_s = (self.acq.time_line[1] - self.acq.time_line[0]) * 1e-9
 		krf = float(self.config['hydro']['krf'])
 		temp = float(self.config['hydro']['temp'])
@@ -330,8 +335,17 @@ class scanning :
 		time_us = self.acq.time_line / 1000.0
 		self.lineA.set_data(time_us, pressure_pa / 1e6)
 		self.line_sw.set_data(time_us, sw_pa / 1e6)
+
+		info_parts = []
+		if ind is not None and total is not None:
+			info_parts.append('Shot {}/{}'.format(ind + 1, total))
+		elif ind is not None:
+			info_parts.append('Acquisition #{}'.format(ind + 1))
+		if position is not None:
+			info_parts.append('X={:.2f}  Y={:.2f}  Z={:.2f}'.format(*position))
 		suffix = '' if detected else ' (no SW detected - showing raw max)'
-		self.text_peak.set_text('MAX (windowed): {:.2f} MPa{}'.format(peak_mpa, suffix))
+		info_parts.append('MAX (windowed): {:.2f} MPa{}'.format(peak_mpa, suffix))
+		self.text_info.set_text('   |   '.join(info_parts))
 
 		old_xlim = self.ax.get_xlim()
 		old_ylim = self.ax.get_ylim()
@@ -340,14 +354,14 @@ class scanning :
 		if self.ax.get_xlim() != old_xlim or self.ax.get_ylim() != old_ylim:
 			# axis limits changed - needs a full redraw to refresh ticks/background
 			self.fig.canvas.draw()
-			self.plot_background = self.fig.canvas.copy_from_bbox(self.ax.bbox)
+			self.plot_background = self.fig.canvas.copy_from_bbox(self.fig.bbox)
 		else:
 			# steady state - just blit the artists instead of redrawing everything
 			self.fig.canvas.restore_region(self.plot_background)
 			self.ax.draw_artist(self.lineA)
 			self.ax.draw_artist(self.line_sw)
-			self.ax.draw_artist(self.text_peak)
-			self.fig.canvas.blit(self.ax.bbox)
+			self.ax_info.draw_artist(self.text_info)
+			self.fig.canvas.blit(self.fig.bbox)
 		self.fig.canvas.flush_events()
 		plt.pause(0.001)
 
@@ -376,19 +390,26 @@ class scanning :
 			self.trig_shot.gene_trig()
 			self.acq.get_data()
 			if (not throttle_plot) or (ind % 5 == 0) or (ind == self.gridSize - 1):
-				self.update_plot()
+				self.update_plot(ind, self.gridSize, position)
 			self.save_data(ind,position)
 			self.print_progress(ind,self.gridSize,t1,position)
 		t2=time.time()
 		print('duration acquisition ')
 		print (t2-t1)
+		try:
+			scan_result = scan_postprocess.process_1d_scan(self.folder_name)
+			if scan_result is not None:
+				scan_postprocess.plot_scan_result(
+					scan_result, save_path=self.folder_name+'/scan_result.png')
+		except Exception as e:
+			print('scan post-processing failed (raw scan data is unaffected): {}'.format(e))
 		if close_plot_after:
 			plt.close(self.fig)
 	def run_shot_sequence(self):
+		self.reload('config/config_scan.ini')
 		self.scope_init()
 		self.define_current_date()
-		self.create_result_folder()
-		self.reload()
+		self.create_result_folder('')
 		delay_shot=int(self.config['sequence_shot']['delayshot'])*0.001
 		Nshot=int(self.config['sequence_shot']['number_shot'])
 		t1=time.time()
@@ -399,15 +420,33 @@ class scanning :
 
 			self.trig_shot.gene_trig()
 			self.acq.get_data()
-			self.update_plot()
+			self.update_plot(ind, Nshot, position)
 			self.save_data(ind,position)
 			self.print_progress(ind,Nshot,t1,position)
 			time.sleep(delay_shot)
 		t2=time.time()
 
 		print(t2-t1)
-		
-		
+
+	def run_acquisition_loop(self):
+		"""Free-running acquisition with no motor movement - for live
+		viewing/alignment, not a recorded measurement (no folder/save_data).
+		Runs until self.acquisition_running is set False (the Start/Stop
+		toggle button in the UI flips it via a re-entrant call, the same
+		way the scan loop already stays responsive: update_plot()'s
+		flush_events() lets Qt process that button's next click mid-loop)."""
+		self.reload('config/config_scan.ini')
+		self.scope_init()
+		self.acq.running_block()
+		self.init_plot()
+		ind = 0
+		while self.acquisition_running:
+			self.trig_shot.gene_trig()
+			self.acq.get_data()
+			position = self.motor.getCurrentPosition()
+			self.update_plot(ind, None, position)
+			ind += 1
+
 	def disconnect_motor(self):
 		self.motor.disconnect()
 		

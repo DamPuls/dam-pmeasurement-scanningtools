@@ -181,7 +181,17 @@ class f_app :
     def Run_scan_app(self):
         self.pr.run_scan('config/config_scan.ini','')
         #text_area.insert(tk.END, "Run Scan.\n")
-    
+
+    def run_shot_sequence_app(self):
+        # Repeated shots at the current position (no motor movement),
+        # number/delay from the ini's [sequence_shot] section - saved to
+        # disk like a real measurement, unlike the free-running Start/Stop
+        # Acquisition toggle. Already existed in process_scan.py (wired
+        # only in the old Tkinter Scan_app.py) - just exposing it here.
+        self.add_message("Starting shot sequence...\n")
+        self.pr.run_shot_sequence()
+        self.add_message("Shot sequence done.\n")
+
     def run_sequence_scan(self):
         folder_sequence_save =simpledialog.askstring(title=" folder name",prompt="put the name of folder :")
         os.mkdir('measure/'+folder_sequence_save)
@@ -248,3 +258,25 @@ class f_app :
             # Printed (not just shown in the non-copyable message widget) so
             # the full traceback can be read/copied from the console.
             traceback.print_exc()
+
+    def toggle_acquisition_app(self, button):
+        # New, additive feature: free-running acquisition (no motor
+        # movement) for live viewing/alignment. Same button toggles
+        # Start/Stop - the second (Stop) click reaches this method
+        # re-entrantly while the first call is still blocked inside
+        # run_acquisition_loop()'s while-loop, since update_plot()'s
+        # flush_events() lets Qt dispatch it mid-loop (same mechanism the
+        # scan loop already relies on to stay responsive).
+        if not self.pr.acquisition_running:
+            self.pr.acquisition_running = True
+            button.setText("Stop Acquisition")
+            self.add_message("Acquisition started (no motor movement).\n")
+            try:
+                self.pr.run_acquisition_loop()
+            except Exception as e:
+                self.add_message("Acquisition loop error: {}\n".format(e))
+                self.pr.acquisition_running = False
+            button.setText("Start Acquisition")
+            self.add_message("Acquisition stopped.\n")
+        else:
+            self.pr.acquisition_running = False
