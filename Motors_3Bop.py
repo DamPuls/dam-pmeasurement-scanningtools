@@ -185,20 +185,34 @@ class Motor_3Bop(Motors):
 
 	def connect(self, port = 3, baudRate = 115200):
 		timeout=5
-		self.com = serial.Serial('Com'+str(port), baudRate, timeout=timeout)
-		line=self.com.readline().rstrip()
 		msg = "port= {} baudRate= {}".format(port,baudRate)
 		logger.debug(msg)
-		if line ==  'start':
-			portOk = True
+		self.com = serial.Serial()
+		self.com.port = 'Com'+str(port)
+		self.com.baudrate = baudRate
+		self.com.timeout = timeout
+		# Hold DTR/RTS low *before* opening. pySerial's default open() on
+		# Windows toggles DTR, which resets this Arduino Mega-based
+		# controller and wipes its internal step-position reference (there's
+		# no absolute encoder - G28 homing is otherwise the only way to
+		# recover it). Suppressing that reset lets the firmware, and
+		# therefore the real stage position, survive an app restart.
+		# Confirmed on real hardware: after a real G28 home, reconnecting
+		# this way and re-querying M114 reports the exact same position, no
+		# boot banner - the reset genuinely doesn't happen.
+		self.com.dtr = False
+		self.com.rts = False
+		self.com.dsrdtr = False
+		self.com.rtscts = False
+		self.com.open()
+
 		finished=False
 		isOK = False
-		error = False
 		version = ''
 		start_time=time.time()
 		while ( not finished ):
 			line=self.com.readline().rstrip()
-			if(line!=''):
+			if(line!=b''):
 				line2=line.decode('utf-8')
 				token = line2.split()
 				if token[0] == 'ok':
@@ -209,15 +223,32 @@ class Motor_3Bop(Motors):
 						version = token[2]
 				if token[0] == '!!':
 					finished = True
-				if ((time.time()-start_time)>timeout):
-					finished =True
-		if (isOK) and (not error):
-			self.connected = True
-		else:
-			self.com.close()
-			raise MotorError("Error could not connect to Motors")
+			if ((time.time()-start_time)>timeout):
+				finished =True
 
-		msg = "finished: {} isOK: {} connected: {}".format(finished, isOK, self.connected)
+		self.connected = True
+		if isOK:
+			# Boot banner seen - the firmware really did (re)start, exactly
+			# like before: connected but unreferenced until homeAxis().
+			self._current_position = [-1.00,-1.00,-1.00]
+		else:
+			# No boot banner within the timeout - the firmware almost
+			# certainly did NOT reset (it never sends anything unprompted).
+			# Nudge its command parser back in sync (a blank line - found
+			# necessary on real hardware right after this kind of reconnect)
+			# and ask it directly where it thinks it is, instead of assuming
+			# it needs re-homing. If it genuinely is unreferenced (e.g. a
+			# real power-cycle happened), readPosition already falls back to
+			# the -1,-1,-1 sentinel on its own.
+			for attempt in range(2):
+				self.com.write(b'\n')
+				time.sleep(0.2)
+				self.readPosition(0, forceRead=True)
+				if self._current_position[0] >= 0.0:
+					break
+
+		msg = "finished: {} isOK: {} connected: {} position: {}".format(
+			finished, isOK, self.connected, self._current_position)
 		logger.debug(msg)
 
 	# end def connect
@@ -262,7 +293,7 @@ class Motor_3Bop(Motors):
 			start_time=time.time()
 			while ( not finished ):
 				line=self.com.readline().rstrip()
-				if(line!=''):
+				if(line!=b''):
 					lines.append(line.decode('utf-8'))
 					line2=line.decode('utf-8')
 					token = line2.split()
@@ -415,18 +446,36 @@ class Motor_3Bop(Motors):
 
 	def readPosition(self, axis, forceRead=True):
 		if (forceRead):
-			M114_answer=self.sendCommand("M114\n")
-			for line in M114_answer[1]:
-				split_str=line.split()
-				if split_str[0]=='ok':
-					match_M114=self.M114_re.match(split_str[1])
-					self._current_position = [float(x) for x in match_M114.groups()]
-					position_log.log_position(self._current_position)
-				else:
-					if split_str[0]=='!!':
-						print("error"+split_str[1])
-						self._current_position = [-1.0,-1.0,-1.0]
-						self.ready = False
+			# Occasionally (seen right after a G1 move) the firmware answers
+			# M114 with a bare "ok" and no "X:..,Y:..,Z:.." payload - likely
+			# a stray/early "ok" for the preceding move rather than the real
+			# M114 reply, which may still be a moment away. Retry a couple
+			# of times rather than crash on it or silently keep the
+			# pre-move (now stale/wrong) position.
+			got_position = False
+			for attempt in range(3):
+				M114_answer=self.sendCommand("M114\n")
+				for line in M114_answer[1]:
+					split_str=line.split()
+					if not split_str:
+						continue
+					if split_str[0]=='ok':
+						if len(split_str) < 2:
+							continue
+						match_M114=self.M114_re.match(split_str[1])
+						if match_M114:
+							self._current_position = [float(x) for x in match_M114.groups()]
+							position_log.log_position(self._current_position)
+							got_position = True
+					else:
+						if split_str[0]=='!!':
+							print("error"+split_str[1])
+							self._current_position = [-1.0,-1.0,-1.0]
+							self.ready = False
+							got_position = True
+				if got_position:
+					break
+				time.sleep(0.2)
 		msg = "current_position: {} ".format(self._current_position)
 		logger.debug(msg)
 		return self._current_position

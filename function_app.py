@@ -37,7 +37,13 @@ class f_app :
     
     def connect_motor_app(self):
         self.pr.axes_init()
-        self.add_message( " connect motor .\n")
+        pos = self.pr.motor.getCurrentPosition()
+        if all(p >= 0.0 for p in pos):
+            self.add_message(
+                "Motors connected - position preserved (X={:.3f} Y={:.3f} Z={:.3f}), no homing needed.\n".format(*pos))
+        else:
+            self.add_message(
+                "Motors connected - unreferenced (firmware rebooted), please home before moving.\n")
     
     def connect_scope_app(self):
         self.pr.scope_connect()
@@ -178,56 +184,98 @@ class f_app :
     
            
 
-    def Run_scan_app(self):
-        self.pr.run_scan('config/config_scan.ini','')
-        #text_area.insert(tk.END, "Run Scan.\n")
+    def toggle_scan_app(self, button):
+        # Same Start/Stop toggle pattern as toggle_acquisition_app: the
+        # Stop click re-enters this method while the first call is still
+        # blocked inside run_scan()'s per-point loop, since update_plot()'s
+        # flush_events() lets Qt dispatch it mid-loop. run_scan() checks
+        # self.pr.scan_running at the top of each iteration and breaks.
+        if not self.pr.scan_running:
+            self.pr.scan_running = True
+            button.setText("Stop scan")
+            try:
+                self.pr.run_scan('config/config_scan.ini','')
+            except Exception as e:
+                self.add_message("Scan error: {}\n".format(e))
+            self.pr.scan_running = False
+            button.setText("Start scan")
+        else:
+            self.pr.scan_running = False
 
-    def run_shot_sequence_app(self):
+    def toggle_shot_sequence_app(self, button):
         # Repeated shots at the current position (no motor movement),
         # number/delay from the ini's [sequence_shot] section - saved to
-        # disk like a real measurement, unlike the free-running Start/Stop
-        # Acquisition toggle. Already existed in process_scan.py (wired
-        # only in the old Tkinter Scan_app.py) - just exposing it here.
-        self.add_message("Starting shot sequence...\n")
-        self.pr.run_shot_sequence()
-        self.add_message("Shot sequence done.\n")
-
-    def run_sequence_scan(self):
-        folder_sequence_save =simpledialog.askstring(title=" folder name",prompt="put the name of folder :")
-        os.mkdir('measure/'+folder_sequence_save)
-        if folder_sequence_save:
-          
-             print("folder creates :"+folder_sequence_save)
+        # disk like a real measurement. Same Start/Stop toggle pattern as
+        # toggle_scan_app: the Stop click re-enters this method while the
+        # first call is still blocked inside run_shot_sequence()'s loop.
+        if not self.pr.shot_sequence_running:
+            self.pr.shot_sequence_running = True
+            button.setText("Stop shot sequence")
+            self.add_message("Starting shot sequence...\n")
+            try:
+                self.pr.run_shot_sequence()
+            except Exception as e:
+                self.add_message("Shot sequence error: {}\n".format(e))
+            self.pr.shot_sequence_running = False
+            button.setText("Run shot sequence")
+            self.add_message("Shot sequence done.\n")
         else:
-            print("no names")
-        folder_sequence_save=folder_sequence_save+'/'
-        #list_scan=list(Path(folder).glob("*.ini"))
-        folder='sequence_scan'
-        list_files=sorted(Path(folder).glob("*.ini"), key=lambda f: (0, int(f.stem)) if f.stem.isdigit() else (1, f.stem))
-        total_files=len(list_files)
+            self.pr.shot_sequence_running = False
 
-        # Pre-scan every ini's point count so remaining-time-in-sequence can be estimated
-        file_points=[]
-        for f in list_files:
-            cfg=configparser.ConfigParser()
-            cfg.read(f)
-            nx=int(cfg['Number of points']['nx'])
-            ny=int(cfg['Number of points']['ny'])
-            nz=int(cfg['Number of points']['nz'])
-            file_points.append(nx*ny*nz)
-        seq_total_points=sum(file_points)
+    def toggle_sequence_scan_app(self, button):
+        # Same Start/Stop toggle pattern as toggle_acquisition_app/
+        # toggle_scan_app, applied to the whole multi-ini sequence: the
+        # outer per-file loop below also checks self.pr.scan_running (in
+        # addition to run_scan()'s own per-point check), so a Stop click
+        # aborts either the current scan or the wait between scans.
+        if self.pr.scan_running:
+            self.pr.scan_running = False
+            return
 
-        seq_start_time=time.time()
-        points_before=0
-        for i,f in enumerate(list_files, start=1):
+        self.pr.scan_running = True
+        button.setText("Stop sequence")
+        try:
+            folder_sequence_save =simpledialog.askstring(title=" folder name",prompt="put the name of folder :")
+            os.mkdir('measure/'+folder_sequence_save)
+            if folder_sequence_save:
 
-            print(f)
-            self.pr.run_scan(f,folder_sequence_save,f.stem,close_plot_after=True,
-                              seq_index=i,seq_total=total_files,
-                              seq_total_points=seq_total_points,seq_points_before=points_before,
-                              seq_start_time=seq_start_time)
-            points_before+=file_points[i-1]
-    
+                 print("folder creates :"+folder_sequence_save)
+            else:
+                print("no names")
+            folder_sequence_save=folder_sequence_save+'/'
+            #list_scan=list(Path(folder).glob("*.ini"))
+            folder='sequence_scan'
+            list_files=sorted(Path(folder).glob("*.ini"), key=lambda f: (0, int(f.stem)) if f.stem.isdigit() else (1, f.stem))
+            total_files=len(list_files)
+
+            # Pre-scan every ini's point count so remaining-time-in-sequence can be estimated
+            file_points=[]
+            for f in list_files:
+                cfg=configparser.ConfigParser()
+                cfg.read(f)
+                nx=int(cfg['Number of points']['nx'])
+                ny=int(cfg['Number of points']['ny'])
+                nz=int(cfg['Number of points']['nz'])
+                file_points.append(nx*ny*nz)
+            seq_total_points=sum(file_points)
+
+            seq_start_time=time.time()
+            points_before=0
+            for i,f in enumerate(list_files, start=1):
+                if not self.pr.scan_running:
+                    break
+
+                print(f)
+                self.pr.run_scan(f,folder_sequence_save,f.stem,close_plot_after=True,
+                                  seq_index=i,seq_total=total_files,
+                                  seq_total_points=seq_total_points,seq_points_before=points_before,
+                                  seq_start_time=seq_start_time)
+                points_before+=file_points[i-1]
+        except Exception as e:
+            self.add_message("Sequence scan error: {}\n".format(e))
+        self.pr.scan_running = False
+        button.setText("Start sequence ")
+
     def disconnect_motor_app(self):
         self.pr.disconnect_motor()
         self.add_message( " disconnect motor .\n")

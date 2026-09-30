@@ -40,6 +40,8 @@ class scanning :
 		self.config = configparser.ConfigParser()
 		self.config.read('config/config_scan.ini')
 		self.acquisition_running = False
+		self.scan_running = False
+		self.shot_sequence_running = False
 
 	    
 	def reload(self,file_ini):
@@ -382,7 +384,10 @@ class scanning :
 		delay_mvt_acq=int(self.config['delaymvt_acq']['delayms'])*0.001
 		self.init_plot()
 		throttle_plot = self.gridSize > 100
+		self.scan_running = True
 		for ind in range(self.gridSize):
+			if not self.scan_running:
+				break
 			self.myScan.moveForward()
 			self.acq.running_block()
 			position=self.motor.getCurrentPosition()
@@ -411,13 +416,18 @@ class scanning :
 		self.define_current_date()
 		self.create_result_folder('')
 		delay_shot=int(self.config['sequence_shot']['delayshot'])*0.001
-		Nshot=int(self.config['sequence_shot']['number_shot'])
+		# Driven by the Start/Stop toggle rather than the ini's number_shot -
+		# runs up to this many shots and stops early on a Stop click.
+		Nshot=100
 		t1=time.time()
-		self.acq.running_block()
 		position=self.motor.getCurrentPosition()
 		self.init_plot()
+		self.shot_sequence_running = True
 		for ind in range(0,Nshot):
+			if not self.shot_sequence_running:
+				break
 
+			self.acq.running_block()
 			self.trig_shot.gene_trig()
 			self.acq.get_data()
 			self.update_plot(ind, Nshot, position)
