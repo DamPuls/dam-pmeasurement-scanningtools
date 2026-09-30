@@ -48,7 +48,7 @@ class f_app :
         pos=self.pr.get_position()
         message = f"motor1 ={pos[0]} motor2 ={pos[1]} motor3= {pos[2]}"
         self.add_message(message)
-    
+
     def Goto_originY_app(self):
         self.pr.origin_init(1)
         pos=self.pr.get_position()

@@ -2,6 +2,7 @@
 measure/
 trash/
 focus_search_logs/
+motor_position_log/
 
 # Scan config / sequence files (generated / machine-specific)
 *.ini

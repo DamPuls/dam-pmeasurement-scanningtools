@@ -5,6 +5,7 @@ import datetime
 import re
 import configparser
 from numpy import array, sqrt
+import position_log
 #from PyQt4.QtCore import QMutex, QMutexLocker
  
 
@@ -420,6 +421,7 @@ class Motor_3Bop(Motors):
 				if split_str[0]=='ok':
 					match_M114=self.M114_re.match(split_str[1])
 					self._current_position = [float(x) for x in match_M114.groups()]
+					position_log.log_position(self._current_position)
 				else:
 					if split_str[0]=='!!':
 						print("error"+split_str[1])

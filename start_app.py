@@ -6,8 +6,9 @@ Created on Mon Feb 16 14:01:43 2026
 """
 
 import sys
-from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton
+from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QListWidget
 from PySide6.QtCore import QFile
+from PySide6.QtGui import QKeySequence
 from interface_scan import Ui_mainWindow
 from function_app import f_app
 
@@ -56,6 +57,18 @@ window.ui.pushButton_save_config.clicked.connect(f_app.change_ini)
 button_find_focus = QPushButton("Find Focus", window.ui.centralwidget)
 window.ui.gridLayout.addWidget(button_find_focus, 10, 4, 1, 1)
 button_find_focus.clicked.connect(f_app.find_focus_app)
+
+# New, additive: let the message list's text be selected and copied
+# (Ctrl+C) - QListWidget items are selectable by default but don't wire
+# up copy-to-clipboard on their own.
+def _listWidget_keyPressEvent(event, _base=QListWidget.keyPressEvent):
+    if event.matches(QKeySequence.StandardKey.Copy):
+        selected = window.ui.listWidget.selectedItems()
+        if selected:
+            QApplication.clipboard().setText("\n".join(item.text() for item in selected))
+    else:
+        _base(window.ui.listWidget, event)
+window.ui.listWidget.keyPressEvent = _listWidget_keyPressEvent
 
 f_app.load_axes()
 sys.exit(app.exec())

@@ -14,8 +14,14 @@ from scope_pico import scope_pico
 from acquisition import acquisition_pico 
 from Motors_3Bop import MotorParams, Motor_3Bop
 from acquisition import acquisition_pico
-from  generator_trig import generator_trig  
+from  generator_trig import generator_trig
+import pressure_convert
+from sw_detect_py import detect_sw
 import matplotlib.pyplot as plt
+
+# Same defaults as the MATLAB pipeline (f_process_scan_2D.m) and focus_search.py
+SW_F_SIGNAL = 2e5      # expected SW signal main frequency (Hz)
+SW_THRESHOLD_PA = 3e6  # detection threshold (Pa) = 3 MPa
 import time 
 from datetime import datetime 
 import os 
@@ -46,7 +52,7 @@ class scanning :
 		
 	def origin_init(self,axis):
 		self.motor.homeAxis(axis)
-	
+
 	def read_axes(self):
 		dir_matrice = [
 		[0, 0, 0],
@@ -298,18 +304,35 @@ class scanning :
 		self.fig = plt.figure(1)
 		self.fig.clf()
 		self.ax = self.fig.add_subplot(111)
-		self.lineB, = self.ax.plot([], [], color='red', label='Channel B', zorder=1)
-		self.lineA, = self.ax.plot([], [], color='blue', label='Channel A', zorder=2)
-		self.ax.set_xlabel('Time (ns)')
-		self.ax.set_ylabel('Amplitude (mV)')
-		self.ax.legend()
+		self.lineA, = self.ax.plot([], [], color='blue', label='Raw', zorder=2, alpha=0.5)
+		self.line_sw, = self.ax.plot([], [], color='orange', label='Windowed', zorder=3)
+		self.text_peak = self.ax.text(0.02, 0.95, '', transform=self.ax.transAxes,
+			va='top', ha='left', fontsize=12,
+			bbox=dict(boxstyle='round', fc='white', ec='gray', alpha=0.8))
+		self.ax.set_xlabel('Time (µs)', fontsize=12)
+		self.ax.set_ylabel('Pressure (MPa)', fontsize=12)
+		self.ax.tick_params(axis='both', labelsize=11)
+		self.ax.grid(True, which='major', axis='both', linewidth=0.5, alpha=0.6)
+		self.ax.legend(fontsize=8, loc='upper right')
 		self.fig.show()
 		self.fig.canvas.draw()
 		self.plot_background = self.fig.canvas.copy_from_bbox(self.ax.bbox)
 
 	def update_plot(self):
-		self.lineA.set_data(self.acq.time_line, self.acq.data)
-		self.lineB.set_data(self.acq.time_line, self.acq.dataB)
+		dt_s = (self.acq.time_line[1] - self.acq.time_line[0]) * 1e-9
+		krf = float(self.config['hydro']['krf'])
+		temp = float(self.config['hydro']['temp'])
+		_, pressure_pa = pressure_convert.voltage_to_pressure(self.acq.data, dt_s, krf, temp)
+
+		sw_pa, detected = detect_sw(pressure_pa, dt_s, SW_F_SIGNAL, SW_THRESHOLD_PA)
+		peak_mpa = (np.max(sw_pa) if detected else np.max(pressure_pa)) / 1e6
+
+		time_us = self.acq.time_line / 1000.0
+		self.lineA.set_data(time_us, pressure_pa / 1e6)
+		self.line_sw.set_data(time_us, sw_pa / 1e6)
+		suffix = '' if detected else ' (no SW detected - showing raw max)'
+		self.text_peak.set_text('MAX (windowed): {:.2f} MPa{}'.format(peak_mpa, suffix))
+
 		old_xlim = self.ax.get_xlim()
 		old_ylim = self.ax.get_ylim()
 		self.ax.relim()
@@ -319,10 +342,11 @@ class scanning :
 			self.fig.canvas.draw()
 			self.plot_background = self.fig.canvas.copy_from_bbox(self.ax.bbox)
 		else:
-			# steady state - just blit the two lines instead of redrawing everything
+			# steady state - just blit the artists instead of redrawing everything
 			self.fig.canvas.restore_region(self.plot_background)
 			self.ax.draw_artist(self.lineA)
-			self.ax.draw_artist(self.lineB)
+			self.ax.draw_artist(self.line_sw)
+			self.ax.draw_artist(self.text_peak)
 			self.fig.canvas.blit(self.ax.bbox)
 		self.fig.canvas.flush_events()
 		plt.pause(0.001)
