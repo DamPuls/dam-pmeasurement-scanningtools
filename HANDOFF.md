@@ -2,6 +2,102 @@
 
 Snapshot of work done in this session, for continuity across a repo/session move.
 
+## Latest update (2026-11-25) — read this first
+
+Repo: https://github.com/DamPuls/dam-pmeasurement-scanningtools (`origin/main`, up to
+date, latest commit `16c3d65`). The repo migration described further below is complete on
+the git side — remote confirmed pointing at the personal `DamPuls` account, pushes clean.
+
+### Python side (`process_scan.py`, `function_app.py`, `scan_postprocess.py`) — committed, pushed
+- **Per-point averaging**: `[averaging] n_acq` in `config_scan.ini` controls shots/point
+  (default 1 = no averaging). `acquire_averaged_with_display()` acquires `n_acq` shots per
+  point, drawing each as a held semi-transparent "ghost" trace plus a live-updating running
+  mean; `clear_shot_lines()` wipes the ghosts when moving to a new point. The averaged
+  signal still goes to `data/` (zero impact on existing MATLAB/Python post-processing);
+  every individual raw shot is additionally saved to a new `data_raw/` folder.
+- **Fixed**: `folder_name_data_raw` used to be cached via `hasattr` and only set once per
+  app session — every averaged scan after the first wrote its raw shots into the *first*
+  scan's folder. Now set fresh in `create_result_folder()`.
+- **Fixed**: Stop-button responsiveness — the interrupt flag is now checked before every
+  single shot (not just once per point), so a large `n_acq` (e.g. 100) no longer makes Stop
+  take minutes to register.
+- **Fixed**: Start/Stop handlers in `function_app.py` were gated on the running flag, which
+  could race if clicked twice quickly (a second nested scan starting before the first
+  unwound) — now gated on the button's own label instead.
+- **Live plot rebuilt**: a real 2D colormap (not a 1D line) for genuine XY/XZ/YZ scans,
+  with percentile-based color clipping so one outlier doesn't wash out the scale. Plot
+  windows are non-modal and auto-close when a new acquisition starts.
+- **Fixed a real bug** in the 1D live profile plot: the X-axis used to index straight into
+  `position[grid_axis_index]`, which is wrong whenever `DirectionX/Y/Z` aren't simple
+  axis-aligned vectors — now resolves the true physical motor axis from the direction
+  vectors (falls back to straight-line distance-from-start for genuinely diagonal scans).
+- **Fixed a second, subtler bug** in that same fallback: `Motor_3Bop.getCurrentPosition()`
+  returns its internal `_current_position` object directly, not a copy — storing it as the
+  "origin" for the distance-from-start calculation meant the origin silently mutated right
+  along with the live position, making every point plot at X=0. Fixed by storing
+  `list(position)` (a real copy) instead.
+- **Added**: a `loop time: X.XXs` print after every point in `run_scan()`, for live timing
+  diagnostics (how long motor-move + acquisition/averaging actually takes per point).
+- **Bumped ini coordinate precision** from 2 to 4 decimals (`DirectionX/Y/Z` reads/writes
+  in `process_scan.py`, max-point write-back in `scan_postprocess.py`) — reduces
+  non-orthogonality drift that was compounding across scan/edit/save cycles.
+
+### MATLAB side (`stim-pmeasurement-postprocessing/DAM/`) — separate repo, **not yet committed**
+Large amount of work this session, superseding/extending the "MATLAB post-processing"
+section further below (which predates all of this). Headline items:
+- **Real bugs fixed**: un-preallocated arrays (`P_correct` in
+  `f_convert_pressure_scan_DAM.m`, `SW` in `f_detect_SW_DAM.m`) growing one column at a
+  time, causing memory fragmentation severe enough to crash MATLAB on a ~2900-point scan
+  even though peak usage was nominally small — both now pre-allocate before their loops.
+  Also removed an unconditional ~186MB debug-only full-matrix copy in the same function.
+- **Fixed**: "Load result"/"Re-process (cache)" silently failing after a scan folder got
+  renamed — both required an exact `<folder name>.mat` match; now match any `.mat` file in
+  the folder (`helpers.m`, `f_reprocess_scan_2D.m`).
+- **Fixed**: grid-index assignment in `f_process_scan_DAM_2D.m` used two independent
+  per-axis projections onto `DirectionX`/`DirectionY`, which silently assumes those vectors
+  are exactly orthogonal — replaced with a joint least-squares solve (`D=[dir1 dir2];
+  ij=D\rel;`), verified against real scan data to eliminate out-of-range grid indices.
+- **Added**: an `apply_outlier_removal` toggle (via `questdlg`, once per batch) so
+  heterogeneous-tissue scans can skip the neighborhood-deviation outlier rejection that
+  assumes a homogeneous medium — threaded through `remove_outliers_2D.m` →
+  `f_process_scan_DAM_2D.m` → `f_process_scan_2D.m`/`f_reprocess_scan_2D.m`.
+- **Fixed display bugs**: heatmap X/Y orientation now matches the real top-down setup
+  photo (`YDir`/`XDir` both reversed); excluded/NaN points are now fully transparent
+  instead of rendering as the colormap's lowest color (looked like "near-zero" instead of
+  "no data"); colormap switched from `parula` to `turbo` for better low-end contrast.
+- **New: `HeatmapControlPanel.mlapp`** — a standalone App Designer window (uifigure apps
+  can't embed in the existing classic-figure tabgroup, so it's a separate window) that
+  replaces the old `add_ratio_control.m`/classic-uicontrol approach entirely. Built
+  collaboratively since Claude can't edit `.mlapp` binaries directly — code was handed over
+  piece by piece for the user to paste into App Designer's Code View. Recurring App
+  Designer quirks worth knowing before doing this again: pasting a whole `properties`
+  block, or adding extra `startupFcn` arguments by typing them into the signature, silently
+  doesn't work — both need a dedicated "+" / "Edit Startup Function Arguments" UI action
+  instead; deleting a method also needs the Code Browser's right-click delete, not text
+  editing (a stray leftover `end` from a bad paste caused two separate "Function
+  definitions are not supported in this context" errors this session). Current state:
+  single-window app showing the heatmap, metrics table, signal plot, and
+  Quantity (Pressure/Intensity/Momentum) / Mode (Values vs Transmission ratio) / Range
+  controls all together, plus a mouse-hover readout showing the value (or ratio, matching
+  whichever mode is active) under the cursor. `plot_heatmaps_2D.m`/`compute_momentum_2D.m`'s
+  own classic-figure tab-drawing is now disabled (`debug=0`) — all display goes through
+  this one app, launched via `show_heatmap_control_panel.m` from `redraw_scan_figure_2D.m`.
+  `add_ratio_control.m` and the abandoned GUIDE-template approach
+  (`build_ratio_control_template.m`) were deleted as fully superseded.
+- **Not yet committed/pushed** — all of this was done directly against the user's live
+  App Designer session and plain `.m` edits in that repo. A future agent should check
+  `stim-pmeasurement-postprocessing`'s git status before assuming any of it is saved to
+  version control, and commit it once the user confirms the app is stable.
+
+### Open items for a future agent
+- Commit the MATLAB repo's changes (see above — almost certainly still uncommitted).
+- A ~15-point 2D test scan (5×3 grid) completed in ~37s (~2.47s/point); a much larger scan
+  (61×81 = 4941 points, X 27–57mm, Y 65–105mm, Z=135, 0.5mm steps) was then configured in
+  `config/config_scan.ini` and estimated at ~3h23min at that rate — check with the user
+  whether that run completed and how post-processing of it went.
+- Focus Search and the rest of the MATLAB 2D pipeline status described below are unchanged
+  from the previous handoff and still apply as written.
+
 ## Context
 - This project (`scanningtools_CURRENT`) is a PySide6 desktop app driving a 3-axis
   motorized scanner + PicoScope 5442D MSO for pressure mapping. Companion MATLAB
@@ -179,7 +275,7 @@ A future attempt should likely detect a stage whose window would exceed the moto
 (from `physical_start`, `dir_vecs`, and `pr.motor.motorParams.limits`) and shrink/re-center
 the window up front, rather than silently clamping every out-of-range point one at a time.
 
-## Repo migration (in progress as of this doc)
+## Repo migration (git side confirmed complete as of 2026-11-25 — see top of doc; folder cleanup below unconfirmed)
 - Old local clone at `...\GitHub\stim-pmeasurement-scanningtools` renamed aside
   (archived), never deleted, corporate remote on GitHub never touched.
 - This repo's content + git history copied to that path, new remote added under
