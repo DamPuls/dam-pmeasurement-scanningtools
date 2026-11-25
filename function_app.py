@@ -190,7 +190,10 @@ class f_app :
         # blocked inside run_scan()'s per-point loop, since update_plot()'s
         # flush_events() lets Qt dispatch it mid-loop. run_scan() checks
         # self.pr.scan_running at the top of each iteration and breaks.
-        if not self.pr.scan_running:
+        # Gated on the button's own label (not just the flag) so repeated
+        # Stop clicks while it's already stopping can't race and kick off a
+        # second, nested run_scan() before the first one has unwound.
+        if button.text() == "Start scan":
             self.pr.scan_running = True
             button.setText("Stop scan")
             try:
@@ -208,7 +211,7 @@ class f_app :
         # disk like a real measurement. Same Start/Stop toggle pattern as
         # toggle_scan_app: the Stop click re-enters this method while the
         # first call is still blocked inside run_shot_sequence()'s loop.
-        if not self.pr.shot_sequence_running:
+        if button.text() == "Run shot sequence":
             self.pr.shot_sequence_running = True
             button.setText("Stop shot sequence")
             self.add_message("Starting shot sequence...\n")
@@ -228,7 +231,7 @@ class f_app :
         # outer per-file loop below also checks self.pr.scan_running (in
         # addition to run_scan()'s own per-point check), so a Stop click
         # aborts either the current scan or the wait between scans.
-        if self.pr.scan_running:
+        if button.text() != "Start sequence ":
             self.pr.scan_running = False
             return
 
@@ -315,7 +318,7 @@ class f_app :
         # run_acquisition_loop()'s while-loop, since update_plot()'s
         # flush_events() lets Qt dispatch it mid-loop (same mechanism the
         # scan loop already relies on to stay responsive).
-        if not self.pr.acquisition_running:
+        if button.text() == "Start Acquisition":
             self.pr.acquisition_running = True
             button.setText("Stop Acquisition")
             self.add_message("Acquisition started (no motor movement).\n")

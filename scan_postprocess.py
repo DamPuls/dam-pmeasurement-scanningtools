@@ -267,7 +267,7 @@ def _compute_max_coordinates(vector_axis, motor_cord, fit_result, ind_max, bool_
 
     if xfit is not None:
         ind_max_fit = int(np.argmax(yfit))
-        xmax_fit = round(float(xfit[ind_max_fit]), 2)
+        xmax_fit = round(float(xfit[ind_max_fit]), 4)
 
         crossing = np.diff((vector_axis >= xmax_fit).astype(int))
         ind_lim_inf_candidates = np.where(crossing == 1)[0]
@@ -288,9 +288,9 @@ def _compute_max_coordinates(vector_axis, motor_cord, fit_result, ind_max, bool_
                 sub_vector_axis = np.sqrt(np.sum((sub_coord - o_axes[:, None]) ** 2, axis=0))
 
             ind_mindiff = int(np.argmin(np.abs(sub_vector_axis - xmax_fit)))
-            maxcoord_fit = np.round(sub_coord[:, ind_mindiff], 2)
+            maxcoord_fit = np.round(sub_coord[:, ind_mindiff], 4)
 
-    maxcoord_raw = np.round(motor_cord[:, ind_max], 2)
+    maxcoord_raw = np.round(motor_cord[:, ind_max], 4)
     return maxcoord_fit, maxcoord_raw, xmax_fit
 
 

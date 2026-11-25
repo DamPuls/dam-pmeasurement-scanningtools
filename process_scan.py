@@ -63,17 +63,17 @@ class scanning :
 		[0, 0, 0],
 		[0, 0, 0]
 		]
-		dir_matrice[0][0]=round(float(self.config['DirectionX']['dir_axes1']),2)
-		dir_matrice[0][1]=round(float(self.config['DirectionX']['dir_axes2']),2)
-		dir_matrice[0][2]=round(float(self.config['DirectionX']['dir_axes3']),2)
-		
-		dir_matrice[1][0]=round(float(self.config['DirectionY']['dir_axes1']),2)
-		dir_matrice[1][1]=round(float(self.config['DirectionY']['dir_axes2']),2)
-		dir_matrice[1][2]=round(float(self.config['DirectionY']['dir_axes3']),2)
-		
-		dir_matrice[2][0]=round(float(self.config['DirectionZ']['dir_axes1']),2)
-		dir_matrice[2][1]=round(float(self.config['DirectionZ']['dir_axes2']),2)
-		dir_matrice[2][2]=round(float(self.config['DirectionZ']['dir_axes3']),2)
+		dir_matrice[0][0]=round(float(self.config['DirectionX']['dir_axes1']),4)
+		dir_matrice[0][1]=round(float(self.config['DirectionX']['dir_axes2']),4)
+		dir_matrice[0][2]=round(float(self.config['DirectionX']['dir_axes3']),4)
+
+		dir_matrice[1][0]=round(float(self.config['DirectionY']['dir_axes1']),4)
+		dir_matrice[1][1]=round(float(self.config['DirectionY']['dir_axes2']),4)
+		dir_matrice[1][2]=round(float(self.config['DirectionY']['dir_axes3']),4)
+
+		dir_matrice[2][0]=round(float(self.config['DirectionZ']['dir_axes1']),4)
+		dir_matrice[2][1]=round(float(self.config['DirectionZ']['dir_axes2']),4)
+		dir_matrice[2][2]=round(float(self.config['DirectionZ']['dir_axes3']),4)
 		return dir_matrice
 		
 	def change_ini(self,file_ini,step,scan_axe,nbr_point_scan):
@@ -96,17 +96,17 @@ class scanning :
 		dir_matrice[2][2]=float(self.config['DirectionZ']['dir_axes3'])
 		norm = np.sqrt(sum(x**2 for x in dir_matrice[0]))
 		
-		self.config['DirectionX']['dir_axes1']=str(round(dir_matrice[0][0]*step[0]/norm,2) )
-		self.config['DirectionX']['dir_axes2']=str(round(dir_matrice[0][1]*step[0]/norm,2) )
-		self.config['DirectionX']['dir_axes3']=str(round(dir_matrice[0][2]*step[0]/norm,2) )
+		self.config['DirectionX']['dir_axes1']=str(round(dir_matrice[0][0]*step[0]/norm,4) )
+		self.config['DirectionX']['dir_axes2']=str(round(dir_matrice[0][1]*step[0]/norm,4) )
+		self.config['DirectionX']['dir_axes3']=str(round(dir_matrice[0][2]*step[0]/norm,4) )
 		norm = np.sqrt(sum(x**2 for x in dir_matrice[1]))
-		self.config['DirectionY']['dir_axes1']=str(round(dir_matrice[1][0]*step[1]/norm,2) )
-		self.config['DirectionY']['dir_axes2']=str(round(dir_matrice[1][1]*step[1]/norm,2) )
-		self.config['DirectionY']['dir_axes3']=str(round(dir_matrice[1][2]*step[1],2))
+		self.config['DirectionY']['dir_axes1']=str(round(dir_matrice[1][0]*step[1]/norm,4) )
+		self.config['DirectionY']['dir_axes2']=str(round(dir_matrice[1][1]*step[1]/norm,4) )
+		self.config['DirectionY']['dir_axes3']=str(round(dir_matrice[1][2]*step[1]/norm,4))
 		norm = np.sqrt(sum(x**2 for x in dir_matrice[2]))
-		self.config['DirectionZ']['dir_axes1']=str(round(dir_matrice[2][0]*step[2]/norm,2) )
-		self.config['DirectionZ']['dir_axes2']=str(round(dir_matrice[2][1]*step[2]/norm,2) )
-		self.config['DirectionZ']['dir_axes3']=str(round(dir_matrice[2][2]*step[2]/norm,2) )
+		self.config['DirectionZ']['dir_axes1']=str(round(dir_matrice[2][0]*step[2]/norm,4) )
+		self.config['DirectionZ']['dir_axes2']=str(round(dir_matrice[2][1]*step[2]/norm,4) )
+		self.config['DirectionZ']['dir_axes3']=str(round(dir_matrice[2][2]*step[2]/norm,4) )
 		p0=[0,0,0]
 		axes_dir=[0,0,0]
 		midle_fov=[0,0,0]
@@ -166,9 +166,9 @@ class scanning :
 			         float(self.config[section]['dir_axes2']),
 			         float(self.config[section]['dir_axes3'])]
 			norm = np.sqrt(sum(x**2 for x in dir_vec))
-			self.config[section]['dir_axes1']=str(round(dir_vec[0]*step[axis]/norm,2))
-			self.config[section]['dir_axes2']=str(round(dir_vec[1]*step[axis]/norm,2))
-			self.config[section]['dir_axes3']=str(round(dir_vec[2]*step[axis]/norm,2))
+			self.config[section]['dir_axes1']=str(round(dir_vec[0]*step[axis]/norm,4))
+			self.config[section]['dir_axes2']=str(round(dir_vec[1]*step[axis]/norm,4))
+			self.config[section]['dir_axes3']=str(round(dir_vec[2]*step[axis]/norm,4))
 
 		for axis in range(3):
 			if axis==axis1:
@@ -266,6 +266,7 @@ class scanning :
 		os.mkdir(self.folder_name)
 		self.folder_name_data=self.folder_name+'/'+'data'
 		os.mkdir(self.folder_name_data)
+		self.folder_name_data_raw=self.folder_name+'/'+'data_raw'
 		
 	def init_scan(self,ini_file):
 		myScanParams = {}
@@ -301,27 +302,180 @@ class scanning :
 	def save_data(self, ind_acqu,position ):
 		str_position='_X_'+str(position[0])+'_Y_'+str(position[1])+'_Z_'+str(position[2])+'_'
 		file_name=self.folder_name_data+'/'+'ind'+str(ind_acqu)+str_position+'.txt'
-		np.savetxt(file_name,np.c_[self.acq.time_line,self.acq.data], delimiter=' ')   # x,y,z equal sized 1D arrays
+		np.savetxt(file_name,np.c_[self.acq.time_line,self.acq.data], delimiter=' ')
 
-	def init_plot(self):
+	def save_raw_shots(self, ind_acqu, position, raw_list):
+		"""Saves every individual (pre-averaging) acquisition for this point,
+		in addition to the averaged signal save_data() already writes under
+		data/ - so averaging for noise reduction never discards the
+		underlying shots. Written to a separate data_raw/ folder (not
+		data/), so the existing MATLAB and Python post-processing - which
+		globs data/ind*.txt expecting exactly one file per point - is
+		completely unaffected."""
+		os.makedirs(self.folder_name_data_raw, exist_ok=True)
+		str_position='_X_'+str(position[0])+'_Y_'+str(position[1])+'_Z_'+str(position[2])+'_'
+		for shot_i, raw in enumerate(raw_list):
+			file_name=self.folder_name_data_raw+'/'+'ind'+str(ind_acqu)+str_position+'shot'+str(shot_i)+'.txt'
+			np.savetxt(file_name,np.c_[self.acq.time_line,raw], delimiter=' ')
+
+	def acquire_averaged_with_display(self, delay_mvt_acq, ind, total, position, running_attr='scan_running'):
+		"""Triggers and acquires config['averaging']['n_acq'] shots (default
+		1 - no averaging) at the current point. Each individual shot is
+		immediately drawn as a semi-transparent 'ghost' trace held on the
+		plot alongside the others from this same point, and the running
+		mean (of every shot acquired so far at this point) is shown as the
+		usual bold Mean (raw)/Mean (windowed) trace - updated after every
+		single shot, not just once per point, so the average visibly builds
+		up live. Caller must call clear_shot_lines() first to start from a
+		clean display for this point. delay_mvt_acq is applied before every
+		single acquisition - both between points (motor-movement settle) and
+		between repeated shots at the same point (averaging).
+
+		running_attr names the instance flag (self.scan_running or
+		self.shot_sequence_running) checked before every single shot, not
+		just once per point - a large n_acq (e.g. 100) at 1.5s/shot can take
+		minutes, and checking only between points meant a Stop click could
+		take that long to actually register.
+
+		Returns the list of individual raw shots acquired before any stop
+		(for save_raw_shots()) - may be shorter than n_acq, even empty, if
+		interrupted."""
+		n_acq = self.config.getint('averaging', 'n_acq', fallback=1)
+		krf = float(self.config['hydro']['krf'])
+		temp = float(self.config['hydro']['temp'])
+		raw_list = []
+		for shot in range(n_acq):
+			if not getattr(self, running_attr):
+				break
+			self.acq.running_block()
+			time.sleep(delay_mvt_acq)
+			self.trig_shot.gene_trig()
+			self.acq.get_data()
+			raw_list.append(self.acq.data.copy())
+
+			dt_s = (self.acq.time_line[1] - self.acq.time_line[0]) * 1e-9
+			_, shot_pressure_pa = pressure_convert.voltage_to_pressure(raw_list[-1], dt_s, krf, temp)
+			time_us = self.acq.time_line / 1000.0
+			line, = self.ax.plot(time_us, shot_pressure_pa/1e6, color='gray',
+				alpha=0.35, linewidth=0.8, zorder=1)
+			self.shot_lines.append(line)
+
+			self.acq.data = np.mean(raw_list, axis=0)
+			self.update_plot(ind, total, position)
+		return raw_list
+
+	def init_plot(self, scan_dims=None):
+		"""scan_dims, when given, is (NX, NY, NZ) for the scan about to run -
+		used to add a live-updating profile panel below the raw trace: a 1D
+		line (MAX vs position) if exactly one axis has more than one point,
+		a 2D colormap (MAX per grid cell) if exactly two do. Three or zero
+		varying axes get no profile panel (a true 3D live view and the
+		non-scan acquisition loops aren't in scope)."""
+		# Close any leftover plot windows (e.g. a previous scan's result
+		# window from scan_postprocess.plot_scan_result, which opens its own
+		# figure) whenever a new acquisition task starts, instead of letting
+		# them pile up on screen.
+		plt.close('all')
 		plt.ion()
-		self.fig = plt.figure(1, figsize=(11, 6))
+
+		self.scan_profile_mode = None
+		if scan_dims is not None:
+			active = [i for i, n in enumerate(scan_dims) if n > 1]
+			if len(active) == 1:
+				self.scan_profile_mode = '1d'
+				self._scan_axis_index = active[0]
+				# The active grid axis (X/Y/Z "direction slot" in the ini)
+				# doesn't necessarily correspond to the same-numbered
+				# physical motor axis - DirectionX/Y/Z can point along any
+				# combination of the 3 motors. Resolve which physical axis
+				# actually moves, matching scan_postprocess.py's plot -
+				# indexing straight into position[] by the grid axis was
+				# reading a constant (non-moving) motor coordinate whenever
+				# the ini's direction vectors aren't the plain identity.
+				direction = np.array([float(self.config['Direction' + 'XYZ'[self._scan_axis_index]]
+					['dir_axes{}'.format(i)]) for i in (1, 2, 3)])
+				moving = np.where(direction != 0)[0]
+				if len(moving) == 1:
+					self._scan_physical_axis = int(moving[0])
+					axis_label = '{} position (mm)'.format('XYZ'[self._scan_physical_axis])
+				else:
+					self._scan_physical_axis = None
+					axis_label = 'Distance from start (mm)'
+				self._scan_profile_origin = None
+				self._scan_profile_positions = []
+				self._scan_profile_values = []
+			elif len(active) == 2:
+				self.scan_profile_mode = '2d'
+				self._scan_axes_2d = active
+				n1, n2 = scan_dims[active[0]], scan_dims[active[1]]
+				self._scan_grid_values = np.full((n2, n1), np.nan)
+				increments = [self.myScan.grid.getIncrementX(),
+					self.myScan.grid.getIncrementY(), self.myScan.grid.getIncrementZ()]
+				self._scan_extent = [
+					-0.5 * increments[active[0]], (n1 - 0.5) * increments[active[0]],
+					-0.5 * increments[active[1]], (n2 - 0.5) * increments[active[1]]]
+
+		with_profile = self.scan_profile_mode is not None
+		self.fig = plt.figure(1, figsize=(11, 8.5) if with_profile else (11, 6.5))
 		self.fig.clf()
-		gs = self.fig.add_gridspec(2, 1, height_ratios=[1, 6], hspace=0.08)
+		if with_profile:
+			gs = self.fig.add_gridspec(3, 1, height_ratios=[0.6, 5.2, 4.2], hspace=0.32)
+		else:
+			gs = self.fig.add_gridspec(2, 1, height_ratios=[0.6, 6.9], hspace=0.1)
 		self.ax_info = self.fig.add_subplot(gs[0])
 		self.ax_info.axis('off')
 		self.text_info = self.ax_info.text(0.0, 0.5, '', transform=self.ax_info.transAxes,
 			va='center', ha='left', fontsize=11)
 
 		self.ax = self.fig.add_subplot(gs[1])
-		self.lineA, = self.ax.plot([], [], color='blue', label='Raw', zorder=2, alpha=0.5)
-		self.line_sw, = self.ax.plot([], [], color='orange', label='Windowed', zorder=3)
+		self.shot_lines = []
+		self.ax.plot([], [], color='gray', alpha=0.35, linewidth=0.8, zorder=1, label='Individual shots')
+		self.lineA, = self.ax.plot([], [], color='blue', label='Mean (raw)', zorder=2, alpha=0.5)
+		self.line_sw, = self.ax.plot([], [], color='orange', label='Mean (windowed)', zorder=3)
 		self.ax.set_xlabel('Time (µs)', fontsize=12)
 		self.ax.set_ylabel('Pressure (MPa)', fontsize=12)
 		self.ax.tick_params(axis='both', labelsize=11)
 		self.ax.grid(True, which='major', axis='both', linewidth=0.5, alpha=0.6)
 		self.ax.legend(fontsize=8, loc='upper right')
+
+		self.ax_profile = None
+		if self.scan_profile_mode == '1d':
+			self.ax_profile = self.fig.add_subplot(gs[2])
+			self.line_profile, = self.ax_profile.plot([], [], color='green', marker='o', markersize=4)
+			self.ax_profile.set_xlabel(axis_label, fontsize=12)
+			self.ax_profile.set_ylabel('MAX pressure (MPa)', fontsize=12)
+			self.ax_profile.tick_params(axis='both', labelsize=11)
+			self.ax_profile.grid(True, which='major', axis='both', linewidth=0.5, alpha=0.6)
+		elif self.scan_profile_mode == '2d':
+			self.ax_profile = self.fig.add_subplot(gs[2])
+			self.im_profile = self.ax_profile.imshow(
+				self._scan_grid_values, origin='lower', aspect='auto',
+				extent=self._scan_extent, cmap='viridis')
+			self.fig.colorbar(self.im_profile, ax=self.ax_profile, label='MAX pressure (MPa)')
+			ax1_letter, ax2_letter = (['X', 'Y', 'Z'][i] for i in self._scan_axes_2d)
+			self.ax_profile.set_xlabel('{} position (mm)'.format(ax1_letter), fontsize=12)
+			self.ax_profile.set_ylabel('{} position (mm)'.format(ax2_letter), fontsize=12)
+			self.ax_profile.tick_params(axis='both', labelsize=11)
+
+		# matplotlib reserves a fixed top/bottom margin by default,
+		# regardless of the gridspec height_ratios above - that margin grows
+		# in absolute size as the figure gets taller, wasting the space just
+		# freed up there. Reclaim it explicitly instead.
+		self.fig.subplots_adjust(top=0.95, bottom=0.08, left=0.08, right=0.97)
+
 		self.fig.show()
+		self.fig.canvas.draw()
+		self.plot_background = self.fig.canvas.copy_from_bbox(self.fig.bbox)
+
+	def clear_shot_lines(self):
+		"""Removes the held 'ghost' traces (individual averaging shots) left
+		over from the previous point. Forces a full redraw immediately,
+		since blitting only ever draws artists on top of a saved background
+		bitmap - it can't erase something that bitmap already has baked in,
+		so a removed line would otherwise stay visible as stale pixels."""
+		for line in self.shot_lines:
+			line.remove()
+		self.shot_lines = []
 		self.fig.canvas.draw()
 		self.plot_background = self.fig.canvas.copy_from_bbox(self.fig.bbox)
 
@@ -339,33 +493,93 @@ class scanning :
 		self.line_sw.set_data(time_us, sw_pa / 1e6)
 
 		info_parts = []
+		suffix = '' if detected else ' (no SW detected - showing raw max)'
+		info_parts.append('MAX (windowed): {:.2f} MPa{}'.format(peak_mpa, suffix))
+		if position is not None:
+			info_parts.append('X={:.2f}  Y={:.2f}  Z={:.2f}'.format(*position))
 		if ind is not None and total is not None:
 			info_parts.append('Shot {}/{}'.format(ind + 1, total))
 		elif ind is not None:
 			info_parts.append('Acquisition #{}'.format(ind + 1))
-		if position is not None:
-			info_parts.append('X={:.2f}  Y={:.2f}  Z={:.2f}'.format(*position))
-		suffix = '' if detected else ' (no SW detected - showing raw max)'
-		info_parts.append('MAX (windowed): {:.2f} MPa{}'.format(peak_mpa, suffix))
 		self.text_info.set_text('   |   '.join(info_parts))
 
 		old_xlim = self.ax.get_xlim()
 		old_ylim = self.ax.get_ylim()
 		self.ax.relim()
 		self.ax.autoscale_view()
-		if self.ax.get_xlim() != old_xlim or self.ax.get_ylim() != old_ylim:
+
+		profile_changed = False
+		if self.scan_profile_mode == '1d' and position is not None:
+			if self._scan_physical_axis is not None:
+				x_value = position[self._scan_physical_axis]
+			else:
+				# Direction vector isn't a single physical axis (a diagonal
+				# scan) - fall back to straight-line distance from the first
+				# point, matching scan_postprocess.py's own fallback.
+				# Motor_3Bop.getCurrentPosition() returns its internal
+				# _current_position object directly (not a copy) - storing
+				# that reference here would mean this "origin" silently
+				# mutates right along with every later position, making
+				# every point plot at the same X (always ~0 distance from
+				# "itself"). Store a real copy instead.
+				if self._scan_profile_origin is None:
+					self._scan_profile_origin = list(position)
+				x_value = float(np.sqrt(sum(
+					(position[k] - self._scan_profile_origin[k]) ** 2 for k in range(3))))
+			self._scan_profile_positions.append(x_value)
+			self._scan_profile_values.append(peak_mpa)
+			self.line_profile.set_data(self._scan_profile_positions, self._scan_profile_values)
+			old_pxlim = self.ax_profile.get_xlim()
+			old_pylim = self.ax_profile.get_ylim()
+			self.ax_profile.relim()
+			self.ax_profile.autoscale_view()
+			profile_changed = (self.ax_profile.get_xlim() != old_pxlim) or (self.ax_profile.get_ylim() != old_pylim)
+		elif self.scan_profile_mode == '2d':
+			grid_index = self.myScan.getPositionIndex()
+			i1 = grid_index[self._scan_axes_2d[0]]
+			i2 = grid_index[self._scan_axes_2d[1]]
+			self._scan_grid_values[i2, i1] = peak_mpa
+			self.im_profile.set_data(self._scan_grid_values)
+			finite_vals = self._scan_grid_values[np.isfinite(self._scan_grid_values)]
+			if finite_vals.size:
+				# Percentile clip instead of plain min/max - cheap (one
+				# np.percentile call over at most a few thousand points) and
+				# stops a single spurious/glitched value from blowing out
+				# the whole color scale. Falls back to plain min/max with
+				# too few points for percentiles to mean anything.
+				if finite_vals.size >= 10:
+					vmin, vmax = np.percentile(finite_vals, [1, 99])
+				else:
+					vmin, vmax = np.min(finite_vals), np.max(finite_vals)
+				if vmax <= vmin:
+					vmax = vmin + 1e-9
+				self.im_profile.set_clim(vmin=float(vmin), vmax=float(vmax))
+			# imshow's colorbar ticks only refresh on a full canvas draw, not
+			# a blit of the image artist alone - just always redraw fully
+			# here rather than tracking that separately.
+			profile_changed = True
+
+		if self.ax.get_xlim() != old_xlim or self.ax.get_ylim() != old_ylim or profile_changed:
 			# axis limits changed - needs a full redraw to refresh ticks/background
 			self.fig.canvas.draw()
 			self.plot_background = self.fig.canvas.copy_from_bbox(self.fig.bbox)
 		else:
 			# steady state - just blit the artists instead of redrawing everything
 			self.fig.canvas.restore_region(self.plot_background)
+			for line in self.shot_lines:
+				self.ax.draw_artist(line)
 			self.ax.draw_artist(self.lineA)
 			self.ax.draw_artist(self.line_sw)
 			self.ax_info.draw_artist(self.text_info)
+			if self.scan_profile_mode == '1d':
+				self.ax_profile.draw_artist(self.line_profile)
 			self.fig.canvas.blit(self.fig.bbox)
+		# flush_events() alone pumps the Qt event loop (redraw + button
+		# clicks) without re-raising/re-focusing the plot window the way
+		# plt.pause() does internally (it calls show(block=False) every
+		# time) - that repeated re-focus was stealing focus from the main
+		# app window on every refresh, blocking clicks on it mid-scan.
 		self.fig.canvas.flush_events()
-		plt.pause(0.001)
 
 
 	def run_scan(self,ini_file,save_folder,ini_suffix='',close_plot_after=False,seq_index=None,seq_total=None,seq_total_points=None,seq_points_before=None,seq_start_time=None):
@@ -382,22 +596,23 @@ class scanning :
 		self.init_scan(ini_file)
 		self.save_config(ini_file)
 		delay_mvt_acq=int(self.config['delaymvt_acq']['delayms'])*0.001
-		self.init_plot()
-		throttle_plot = self.gridSize > 100
+		self.init_plot(scan_dims=(self.myScan.grid.NX, self.myScan.grid.NY, self.myScan.grid.NZ))
 		self.scan_running = True
 		for ind in range(self.gridSize):
 			if not self.scan_running:
 				break
+			loop_t0 = time.time()
 			self.myScan.moveForward()
-			self.acq.running_block()
 			position=self.motor.getCurrentPosition()
-			time.sleep(delay_mvt_acq)
-			self.trig_shot.gene_trig()
-			self.acq.get_data()
-			if (not throttle_plot) or (ind % 5 == 0) or (ind == self.gridSize - 1):
-				self.update_plot(ind, self.gridSize, position)
+			self.clear_shot_lines()
+			raw_list = self.acquire_averaged_with_display(delay_mvt_acq, ind, self.gridSize, position, 'scan_running')
+			if not raw_list:
+				break
 			self.save_data(ind,position)
+			if len(raw_list) > 1:
+				self.save_raw_shots(ind, position, raw_list)
 			self.print_progress(ind,self.gridSize,t1,position)
+			print('  loop time: {:.2f}s'.format(time.time() - loop_t0))
 		t2=time.time()
 		print('duration acquisition ')
 		print (t2-t1)
@@ -416,6 +631,7 @@ class scanning :
 		self.define_current_date()
 		self.create_result_folder('')
 		delay_shot=int(self.config['sequence_shot']['delayshot'])*0.001
+		delay_mvt_acq=int(self.config['delaymvt_acq']['delayms'])*0.001
 		# Driven by the Start/Stop toggle rather than the ini's number_shot -
 		# runs up to this many shots and stops early on a Stop click.
 		Nshot=100
@@ -427,11 +643,13 @@ class scanning :
 			if not self.shot_sequence_running:
 				break
 
-			self.acq.running_block()
-			self.trig_shot.gene_trig()
-			self.acq.get_data()
-			self.update_plot(ind, Nshot, position)
+			self.clear_shot_lines()
+			raw_list = self.acquire_averaged_with_display(delay_mvt_acq, ind, Nshot, position, 'shot_sequence_running')
+			if not raw_list:
+				break
 			self.save_data(ind,position)
+			if len(raw_list) > 1:
+				self.save_raw_shots(ind, position, raw_list)
 			self.print_progress(ind,Nshot,t1,position)
 			time.sleep(delay_shot)
 		t2=time.time()
